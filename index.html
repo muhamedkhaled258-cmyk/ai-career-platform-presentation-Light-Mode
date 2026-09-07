@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
+<title>AI Career Platform — Final Project</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230ea5e9'/%3E%3Cstop offset='1' stop-color='%236366f1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cpath d='M11 43 L24 29 L36 35 L53 17' stroke='white' stroke-width='5' stroke-linecap='round' fill='none' opacity='0.92'/%3E%3Ccircle cx='11' cy='43' r='6' fill='white'/%3E%3Ccircle cx='24' cy='29' r='6' fill='white'/%3E%3Ccircle cx='36' cy='35' r='6' fill='white'/%3E%3Ccircle cx='53' cy='17' r='6' fill='white'/%3E%3Cpath d='M49 6 l1.7 4.1 4.1 1.7 -4.1 1.7 -1.7 4.1 -1.7 -4.1 -4.1 -1.7 4.1 -1.7 Z' fill='white'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://careerk.runasp.net">
+<link rel="preconnect" href="https://careerk-admin.runasp.net">
+<style>
+  :root{
+    --bg:#0a0e14;
+    --bg-soft:#0f141b;
+    --text:#e8edf2;
+    --text-dim:#9fb0c3;
+    --line:rgba(255,255,255,.16);
+    --accent:#38bdf8;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,"Helvetica Neue",Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{position:fixed;inset:0;background:var(--bg);}
+  #app:fullscreen{width:100%;height:100%;}
+
+  /* ---------- slides ---------- */
+  #stage{position:absolute;inset:0;}
+  .slide{
+    position:absolute;inset:0;background:var(--bg);
+    opacity:0;visibility:hidden;z-index:1;
+    transition:opacity .18s ease-out;
+  }
+  .slide.active{opacity:1;visibility:visible;z-index:2;}
+  .slide.leaving{visibility:visible;z-index:1;}
+
+  /* image slides — contain, never crop/stretch */
+  .slide.image{display:flex;align-items:center;justify-content:center;}
+  .slide.image img{
+    width:100%;height:100%;object-fit:contain;object-position:center;
+    user-select:none;-webkit-user-drag:none;display:block;background:transparent;
+  }
+  .img-error{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;
+    color:var(--text-dim);pointer-events:auto;
+  }
+  .img-error .err-msg{font-size:13px;color:var(--text-dim);}
+  .slide.image img.failed{display:none;}
+
+  /* website slides */
+  .slide.website{background:#fff;}
+  .site-frame{position:absolute;inset:0;}
+  .site-frame iframe{
+    position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#fff;
+  }
+  .site-boot{
+    position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;gap:14px;
+    align-items:center;justify-content:center;background:#fff;color:#475569;
+    font-size:13.5px;letter-spacing:.02em;transition:opacity .3s ease;pointer-events:none;
+  }
+  .site-boot.done{opacity:0;}
+  .spin{
+    width:34px;height:34px;border-radius:50%;
+    border:3px solid rgba(56,189,248,.25);border-top-color:#0ea5e9;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .site-error{
+    position:absolute;inset:0;z-index:4;display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:8px;text-align:center;padding:28px;
+    background:var(--bg);color:var(--text-dim);
+  }
+  .site-error.show{display:flex;}
+  .site-error b{color:var(--text);font-size:17px;font-weight:600;}
+  .site-error .err-url{font-size:12px;opacity:.75;word-break:break-all;max-width:90%;}
+  .err-actions{display:flex;gap:12px;margin-top:10px;}
+  .btn{
+    height:38px;padding:0 16px;border-radius:9px;border:1px solid var(--line);
+    background:rgba(255,255,255,.07);color:var(--text);cursor:pointer;
+    font-size:13.5px;transition:background .15s,border-color .15s;
+  }
+  .btn:hover{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3);}
+  .btn.primary{background:var(--accent);border-color:transparent;color:#062033;font-weight:600;}
+  .btn.primary:hover{background:#7dd3fc;}
+
+  /* ---------- bottom hover navigation ---------- */
+  #hoverZone{position:fixed;left:0;right:0;bottom:0;height:16px;z-index:1001;}
+  #nav{
+    position:fixed;left:0;right:0;bottom:0;height:64px;z-index:1002;
+    display:flex;align-items:center;justify-content:center;gap:14px;padding-bottom:6px;
+    background:linear-gradient(to top,rgba(7,11,17,.82),rgba(7,11,17,0));
+    opacity:0;pointer-events:none;transition:opacity .25s ease;
+  }
+  #nav.visible{opacity:1;pointer-events:auto;}
+  #nav button{
+    display:inline-flex;align-items:center;gap:9px;height:42px;padding:0 20px;
+    border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.08);
+    color:#f1f5f9;cursor:pointer;font-size:14px;font-weight:500;
+    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    transition:background .15s,border-color .15s,transform .12s;
+  }
+  #nav button:hover{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.35);}
+  #nav button:active{transform:scale(.96);}
+  #nav button:disabled{opacity:.35;cursor:default;pointer-events:none;}
+  #nav .nav-sep{width:1px;height:22px;background:rgba(255,255,255,.18);}
+  #nav .kbd{font-size:10.5px;opacity:.55;letter-spacing:.06em;font-weight:400;}
+
+  /* ---------- fullscreen button ---------- */
+  #fsBtn{
+    position:fixed;top:14px;right:14px;z-index:1100;width:44px;height:44px;
+    border-radius:12px;border:1px solid var(--line);
+    background:rgba(12,17,24,.55);color:var(--text);cursor:pointer;
+    display:grid;place-items:center;
+    opacity:.5;transition:opacity .2s,background .2s;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  #fsBtn:hover{opacity:1;background:rgba(26,34,44,.85);}
+  #fsBtn svg{width:20px;height:20px;}
+  #fsBtn .icon-exit{display:none;}
+  #fsBtn[data-fs="1"] .icon-enter{display:none;}
+  #fsBtn[data-fs="1"] .icon-exit{display:block;}
+
+  /* ---------- progress + hint ---------- */
+  #progress{
+    position:fixed;right:14px;bottom:10px;z-index:900;
+    font-size:12px;letter-spacing:.1em;color:rgba(232,237,242,.6);
+    background:rgba(9,13,19,.4);padding:4px 11px;border-radius:6px;
+    pointer-events:none;user-select:none;font-variant-numeric:tabular-nums;
+  }
+  #hint{
+    position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:800;
+    font-size:12px;color:rgba(232,237,242,.75);background:rgba(9,13,19,.55);
+    padding:6px 14px;border-radius:999px;white-space:nowrap;
+    transition:opacity 1.2s ease;pointer-events:none;
+  }
+  #hint.gone{opacity:0;}
+
+  /* ---------- touch devices ---------- */
+  @media (hover:none){
+    #nav{opacity:1;pointer-events:auto;}
+    #hoverZone{display:none;}
+    #hint{display:none;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="stage" role="presentation"></div>
+
+  <div id="hoverZone" aria-hidden="true"></div>
+
+  <nav id="nav" aria-label="Presentation controls">
+    <button id="prevBtn" aria-label="Previous slide — ArrowLeft or PageUp">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      <span>Previous</span>
+      <span class="kbd">←</span>
+    </button>
+    <div class="nav-sep"></div>
+    <button id="nextBtn" aria-label="Next slide — ArrowRight or PageDown">
+      <span class="kbd">→</span>
+      <span>Next</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+    </button>
+  </nav>
+
+  <button id="fsBtn" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen (F)">
+    <svg class="icon-enter" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    <svg class="icon-exit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>
+  </button>
+
+  <div id="progress" aria-hidden="true">1 / 33</div>
+  <div id="hint" aria-hidden="true">← → / PgUp PgDn navigate &nbsp;·&nbsp; F fullscreen &nbsp;·&nbsp; hover bottom edge for controls</div>
+
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   DATA-DRIVEN SLIDE CONFIG — add / remove / reorder freely.
+   type: "image"   -> external image, shown fully (contain)
+         "website" -> real live website embedded in an iframe
+   ============================================================ */
+const SLIDES = [
+  { n: 1,  type: "image",   src: "https://i.ibb.co/DfsHYggC/AI-Career-Platform-Light-Presentation.png" },
+  { n: 2,  type: "image",   src: "https://i.ibb.co/h1f3hwtW/Five-Pillars-of-Project-Success.png" },
+  { n: 3,  type: "image",   src: "https://i.ibb.co/LhzNTtpg/Bright-Problem-Statement-Infographic.png" },
+  { n: 4,  type: "image",   src: "https://i.ibb.co/pjK7M2k4/Solution-Statement.png" },
+  { n: 5,  type: "image",   src: "https://i.ibb.co/HL7YhJkB/System-Statement.png" },
+  { n: 6,  type: "image",   src: "https://i.ibb.co/bM8YtHnB/Landing-Page.png" },
+  { n: 7,  type: "website", src: "https://careerk.runasp.net" },
+  { n: 8,  type: "image",   src: "https://i.ibb.co/S4qmfqb9/Authantication-user-profile.png" },
+  { n: 9,  type: "website", src: "https://careerk.runasp.net/register" },
+  { n: 10, type: "image",   src: "https://i.ibb.co/4ZWSzsnJ/CV-Mangement.png" },
+  { n: 11, type: "website", src: "https://careerk.runasp.net/cv-analysis" },
+  { n: 12, type: "image",   src: "https://i.ibb.co/B7PB2qV/Career-Path-Recomendation.png" },
+  { n: 13, type: "website", src: "https://careerk.runasp.net/career-roadmap" },
+  { n: 14, type: "image",   src: "https://i.ibb.co/hxwnF01B/Job-Matching.png" },
+  { n: 15, type: "website", src: "https://careerk.runasp.net/job-matching" },
+  { n: 16, type: "image",   src: "https://i.ibb.co/Pz5575sW/Job-Fit-Analysis.png" },
+  { n: 17, type: "website", src: "https://careerk.runasp.net/job-fit-analysis" },
+  { n: 18, type: "image",   src: "https://i.ibb.co/BVqj7VYs/Mock-Interview.png" },
+  { n: 19, type: "website", src: "https://careerk.runasp.net/mock-interview" },
+  { n: 20, type: "image",   src: "https://i.ibb.co/JRJG8gD2/Dashboard.png" },
+  { n: 21, type: "website", src: "https://careerk.runasp.net/dashboard" },
+  { n: 22, type: "image",   src: "https://i.ibb.co/39ZxFcVF/Credit-System.png" },
+  { n: 23, type: "website", src: "https://careerk.runasp.net/pricing" },
+  { n: 24, type: "image",   src: "https://i.ibb.co/d9TsFxD/User-Profile.png" },
+  { n: 25, type: "website", src: "https://careerk.runasp.net/profile" },
+  { n: 26, type: "image",   src: "https://i.ibb.co/BV6NPKd7/Arena-Hub.png" },
+  { n: 27, type: "website", src: "https://careerk.runasp.net/arena" },
+  { n: 28, type: "image",   src: "https://i.ibb.co/JjgRRDQ2/Admin-Dashboard.png" },
+  { n: 29, type: "website", src: "https://careerk-admin.runasp.net/admin/dashboard" },
+  { n: 30, type: "image",   src: "https://i.ibb.co/pBmwwJpY/AI-Career-Platform-vs-Nancy-AI.png" },
+  { n: 31, type: "image",   src: "https://i.ibb.co/60Dct0qM/AI-Career-Platform-vs-Tadween-Infographic.png" },
+  { n: 32, type: "image",   src: "https://i.ibb.co/WWnZMrsY/Future-Work.png" },
+  { n: 33, type: "image",   src: "https://i.ibb.co/k2DTfXr9/Bridging-Talent-and-Opportunity-with-AI.png" }
+];
+const TOTAL = SLIDES.length;
+
+/* ---------------- build slides ---------------- */
+const stage = document.getElementById("stage");
+const slides = SLIDES.map((s, i) => {
+  const el = document.createElement("div");
+  el.className = "slide " + s.type;
+  if (s.type === "image") {
+    const img = document.createElement("img");
+    img.alt = "Slide " + (i + 1);
+    img.src = s.src; /* exact remote HTTPS URL, loaded directly by the browser */
+    img.referrerPolicy = "no-referrer";
+    img.decoding = "async";
+    img.draggable = false;
+    img.addEventListener("error", () => showImgError(el, s.src));
+    el.appendChild(img);
+  } else {
+    const frame = document.createElement("div");
+    frame.className = "site-frame";
+    el.appendChild(frame);
+  }
+  stage.appendChild(el);
+  return el;
+});
+
+function showImgError(el, src) {
+  const img = el.querySelector("img");
+  if (!img) return;
+  img.classList.add("failed"); /* hide broken-image icon; alt is not shown either */
+  let wrap = el.querySelector(".img-error");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.className = "img-error";
+    wrap.innerHTML =
+      '<span class="err-msg">Unable to load this image.</span>' +
+      '<button class="btn retry-img">Retry</button>';
+    el.appendChild(wrap);
+    wrap.querySelector(".retry-img").addEventListener("click", () => {
+      img.classList.remove("failed");
+      wrap.remove();
+      img.src = src; /* reload the exact same URL */
+    });
+  }
+}
+
+/* ---------------- live website engine ----------------
+   iframes are created lazily and NEVER destroyed or reloaded.
+   Each route keeps its own iframe; cookies are shared by the
+   browser because all careerk.runasp.net routes are the same
+   origin, so one login persists across slides. The admin app
+   is a separate origin and stays separate automatically. */
+const siteRegistry = new Map(); // slide index -> {iframe, boot, err, loaded}
+
+function ensureSite(i) {
+  const s = SLIDES[i];
+  if (!s || s.type !== "website" || siteRegistry.has(i)) return;
+  const frame = slides[i].querySelector(".site-frame");
+
+  const boot = document.createElement("div");
+  boot.className = "site-boot";
+  boot.innerHTML = '<div class="spin"></div><span>Loading live site…</span>';
+
+  const err = document.createElement("div");
+  err.className = "site-error";
+  err.innerHTML =
+    "<b>This website cannot be embedded here</b>" +
+    '<span>It failed to load, or the server blocks iframe embedding ' +
+    "(e.g. X-Frame-Options / Content-Security-Policy).</span>" +
+    '<div class="err-url">' + s.src + "</div>" +
+    '<div class="err-actions">' +
+    '<a class="btn" href="' + s.src + '" target="_blank" rel="noopener">Open in new tab ↗</a>' +
+    '<button class="btn primary retry-site">Retry</button></div>';
+
+  const iframe = document.createElement("iframe");
+  iframe.setAttribute("allow", "fullscreen; clipboard-write; autoplay; encrypted-media; picture-in-picture");
+  iframe.title = "Live website — " + s.src;
+  iframe.src = s.src;
+
+  frame.appendChild(boot);
+  frame.appendChild(err);
+  frame.appendChild(iframe);
+
+  let loaded = false;
+  const bootTimer = setTimeout(() => {
+    if (!loaded) err.classList.add("show");
+  }, 45000);
+
+  iframe.addEventListener("load", () => {
+    loaded = true;
+    clearTimeout(bootTimer);
+    boot.classList.add("done");
+    setTimeout(() => boot.remove(), 500);
+    /* Best-effort detection of a browser-refused frame (Chrome shows
+       a chrome-error page whose URL is same-origin accessible). */
+    try {
+      const href = iframe.contentWindow && iframe.contentWindow.location.href;
+      if (typeof href === "string" && /^chrome-error:\/\//.test(href)) {
+        err.classList.add("show");
+      }
+    } catch (_e) { /* cross-origin normal page — nothing to inspect */ }
+  });
+  iframe.addEventListener("error", () => {
+    loaded = true;
+    clearTimeout(bootTimer);
+    boot.classList.add("done");
+    err.classList.add("show");
+  });
+
+  err.querySelector(".retry-site").addEventListener("click", () => {
+    err.classList.remove("show");
+    boot.classList.remove("done");
+    iframe.src = iframe.src; // force a fresh load of the same URL
+    loaded = false;
+  });
+
+  siteRegistry.set(i, { iframe, boot, err, loaded: false });
+}
+
+/* ---------------- navigation ---------------- */
+let current = 0;
+const progressEl = document.getElementById("progress");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+
+function render(i) {
+  i = Math.max(0, Math.min(TOTAL - 1, i));
+  if (i === current) { syncButtons(); return; }
+  const prev = slides[current];
+  prev.classList.remove("active");
+  prev.classList.add("leaving");
+  current = i;
+  slides[current].classList.add("active");
+  setTimeout(() => prev.classList.remove("leaving"), 240);
+  const s = SLIDES[current];
+  if (s.type === "website") ensureSite(current);
+  syncButtons();
+  progressEl.textContent = (current + 1) + " / " + TOTAL;
+  flashNav();
+}
+
+function nextSlide() { render(current + 1); }
+function prevSlide() { render(current - 1); }
+
+function syncButtons() {
+  prevBtn.disabled = current === 0;
+  nextBtn.disabled = current === TOTAL - 1;
+}
+
+/* ---------------- fullscreen (real Fullscreen API) ---------------- */
+const app = document.getElementById("app");
+const fsBtn = document.getElementById("fsBtn");
+
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+function toggleFullscreen() {
+  if (isFullscreen()) {
+    (document.exitFullscreen || document.webkitExitFullscreen || (() => {})).call(document);
+  } else if (app.requestFullscreen) {
+    app.requestFullscreen().catch(() => { /* e.g. iframe-focused gesture restrictions */ });
+  } else if (app.webkitRequestFullscreen) {
+    app.webkitRequestFullscreen();
+  } else {
+    /* last-resort graceful fallback: CSS-only fullscreen */
+    document.documentElement.classList.toggle("pseudo-fs");
+  }
+}
+const syncFsState = () => { fsBtn.dataset.fs = isFullscreen() ? "1" : "0"; };
+document.addEventListener("fullscreenchange", syncFsState);
+document.addEventListener("webkitfullscreenchange", syncFsState);
+syncFsState();
+fsBtn.addEventListener("click", toggleFullscreen);
+
+/* ---------------- bottom hover navigation ---------------- */
+const nav = document.getElementById("nav");
+const hoverZone = document.getElementById("hoverZone");
+let navHideTimer = null;
+
+function showNav() {
+  clearTimeout(navHideTimer);
+  nav.classList.add("visible");
+}
+function hideNavSoon() {
+  clearTimeout(navHideTimer);
+  navHideTimer = setTimeout(() => {
+    if (!nav.matches(":hover")) nav.classList.remove("visible");
+  }, 350);
+}
+hoverZone.addEventListener("mouseenter", showNav);
+hoverZone.addEventListener("mouseleave", hideNavSoon);
+nav.addEventListener("mouseenter", showNav);
+nav.addEventListener("mouseleave", hideNavSoon);
+prevBtn.addEventListener("click", prevSlide);
+nextBtn.addEventListener("click", nextSlide);
+
+function flashNav() {
+  showNav();
+  clearTimeout(navHideTimer);
+  navHideTimer = setTimeout(() => {
+    if (!nav.matches(":hover") && !hoverZone.matches(":hover")) nav.classList.remove("visible");
+  }, 1400);
+}
+
+/* ---------------- keyboard ---------------- */
+window.addEventListener("keydown", (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target && e.target.tagName) || "";
+  const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (e.target && e.target.isContentEditable);
+  switch (e.key) {
+    case "ArrowRight":
+    case "PageDown":
+      if (!typing) { e.preventDefault(); nextSlide(); }
+      break;
+    case "ArrowLeft":
+    case "PageUp":
+      if (!typing) { e.preventDefault(); prevSlide(); }
+      break;
+    case "F":
+    case "f":
+      e.preventDefault();
+      toggleFullscreen();
+      break;
+  }
+}, true);
+
+/* ---------------- one-time hint ---------------- */
+const hint = document.getElementById("hint");
+setTimeout(() => hint.classList.add("gone"), 6000);
+
+/* ---------------- boot ----------------
+   Starts on slide 1 by default. Opening the file with a #N fragment
+   (e.g. presentation.html#7) starts directly on slide N — useful for
+   rehearsing a specific section. */
+const hashN = parseInt(String(location.hash).replace(/^#/, ""), 10);
+render(!isNaN(hashN) && hashN >= 1 ? Math.min(hashN, TOTAL) - 1 : 0);
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
